@@ -79,6 +79,7 @@ func createDNSPatch(tuple *podSpecAndMeta, annotationValue string) (patch []patc
 				},
 			},
 		})...)
+	permission := int32(420)
 	patch = append(patch, addVolume(tuple.spec,
 		[]corev1.Volume{{
 			Name: "nsm-coredns-volume",
@@ -86,6 +87,20 @@ func createDNSPatch(tuple *podSpecAndMeta, annotationValue string) (patch []patc
 				EmptyDir: &corev1.EmptyDirVolumeSource{
 					Medium:    corev1.StorageMediumDefault,
 					SizeLimit: nil,
+				},
+			},
+		},
+		{
+			Name: "nsm-podinfo-volume",
+			VolumeSource: corev1.VolumeSource{
+				DownwardAPI: &corev1.DownwardAPIVolumeSource{
+					DefaultMode: &permission,
+					Items: []corev1.DownwardAPIVolumeFile{{
+						Path: "uid",
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.uid",
+						},
+					}},
 				},
 			},
 		}})...)
@@ -129,6 +144,11 @@ func createNsmInitContainerPatch(annotationValue string) []patchOperation {
 		Name:            initContainerName,
 		Image:           fmt.Sprintf("%s/%s:%s", getRepo(), getInitContainer(), getTag()),
 		ImagePullPolicy: corev1.PullIfNotPresent,
+		VolumeMounts: []corev1.VolumeMount{{
+			ReadOnly:  true,
+			Name:      "nsm-podinfo-volume",
+			MountPath: "/etc/podinfo",
+		}},
 		Env:             envVals,
 		Resources: corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{

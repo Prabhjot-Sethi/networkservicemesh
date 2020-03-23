@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"time"
 
 	"github.com/pkg/errors"
@@ -199,6 +200,12 @@ func NewNSMClient(ctx context.Context, configuration *common.NSConfiguration) (*
 		NscInterfaceName:  configuration.NscInterfaceName,
 	}
 
+	// FIXME(Prabhjot) : hacking to put uid value here,
+	// need to check if it is right place
+	uid, uidErr := ioutil.ReadFile("/etc/podinfo/uid")
+	if uidErr == nil {
+		client.OutgoingNscLabels["uid"] = string(uid)
+	}
 	client.tracerCloser = jaeger.InitJaeger("nsm-client")
 
 	nsmConnection, err := common.NewNSMConnection(ctx, configuration)
